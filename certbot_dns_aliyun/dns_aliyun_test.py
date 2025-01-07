@@ -32,14 +32,35 @@ class AuthenticatorTest(test_util.TempDirTestCase,
             "aliyun_access_key_secret": ACCESS_KEY_SECRET
         }, path)
 
-        self.config = mock.MagicMock(aliyun_credentials=path,
-                                     aliyun_propagation_seconds=0)  # don't wait during tests
+        self.config = mock.MagicMock(
+            aliyun_credentials=path,
+            aliyun_propagation_seconds=0
+        )
 
         self.auth = Authenticator(self.config, "aliyun")
-
+        
+        self.auth._configure_credentials(
+            'credentials',
+            'Aliyun DNS credentials INI file',
+            {
+                'access-key': 'AccessKey for Aliyun DNS, obtained from Aliyun RAM',
+                'access-key-secret': 'AccessKeySecret for Aliyun DNS, obtained from Aliyun RAM'
+            }
+        )
+        
         self.mock_client = mock.MagicMock()
-        # _get_aliyun_client | pylint: disable=protected-access
-        self.auth._get_aliyun_client = mock.MagicMock(return_value=self.mock_client)
+        self.auth._get_alidns_client = mock.MagicMock(return_value=self.mock_client)
+
+    @test_util.patch_display_util()
+    def test_perform(self, mock_get_utility):
+        self.auth.perform([self.achall])
+        self.mock_client.add_txt_record.assert_called_once()
+
+    @test_util.patch_display_util()
+    def test_cleanup(self, mock_get_utility):
+        self.auth._attempt_cleanup = True
+        self.auth.cleanup([self.achall])
+        self.mock_client.del_txt_record.assert_called_once()
 
 
 if __name__ == "__main__":
